@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Configures the Camel Context -->
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:camel-cxf="http://camel.apache.org/schema/cxf"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="  http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring-2.18.3.xsd  http://camel.apache.org/schema/cxf http://camel.apache.org/schema/cxf/camel-cxf-2.18.3-spring.xsd">
+    <!-- Empacotadores / Descompactadores para mensagens com gzip no content-encoding -->
+    <bean class="org.apache.cxf.transport.common.gzip.GZIPInInterceptor" id="gZipInInterceptor"/>
+    <bean
+        class="org.apache.cxf.transport.common.gzip.GZIPOutInterceptor" id="gZipOutInterceptor"/>
+    <camel-cxf:cxfEndpoint
+        address="https://www3.bcb.gov.br/wssgs/services/FachadaWSSGS"
+        id="wsConsultarContacaoMoedaClient"
+        serviceClass="br.gov.bcb.www3.wssgs.services.FachadaWSSGS.FachadaWSSGSService" wsdlURL="https://www3.bcb.gov.br/sgspub/JSP/sgsgeral/FachadaWSSGS.wsdl">
+        <camel-cxf:inInterceptors>
+            <ref bean="gZipInInterceptor"/>
+        </camel-cxf:inInterceptors>
+        <camel-cxf:outInterceptors>
+            <ref bean="gZipOutInterceptor"/>
+        </camel-cxf:outInterceptors>
+    </camel-cxf:cxfEndpoint>
+    <!-- Acesso a properties -->
+    <bean
+        class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer" id="propertyPlaceHolder"/>
+    <!-- Configuração do conversor para JSON -->
+    <bean class="org.apache.camel.component.gson.GsonDataFormat" id="protocolodtoTogson">
+        <property name="fieldNamingPolicy" value="LOWER_CASE_WITH_UNDERSCORES"/>
+        <property name="dateFormatPattern" value="HH:mm:ss dd/MM/yyyy"/>
+        <property name="prettyPrint" value="true"/>
+        <property name="serializeNulls" value="false"/>
+    </bean>
+    <camelContext id="soapRestProxyContext"
+        xmlns="http://camel.apache.org/schema/spring" xmlns:order="http://fabric8.com/examples/order/v7">
+        <dataFormats>
+            <xmljson id="xmljson"/>
+            <json id="jacksonMoeda" library="Jackson" prettyPrint="true" unmarshalTypeName="br.gov.bcb.pec.sgs.casosdeuso.ws.comum.WSValorSerieVO"/>
+        </dataFormats>
+        <!-- Configuração da API REST -->
+        <restConfiguration apiContextPath="/api-doc" bindingMode="off"
+            component="servlet" contextPath="/api" enableCORS="true">
+            <dataFormatProperty key="prettyPrint" value="true"/>
+            <apiProperty key="host" value=""/>
+            <apiProperty key="api.version" value="1.0.0"/>
+            <apiProperty key="api.title" value="SOAP to REST Proxy"/>
+            <apiProperty key="api.description" value="Camel Rest Example with Swagger that provides a SOAP to REST proxy service"/>
+            <apiProperty key="api.contact.name" value="Conrad Peres"/>
+        </restConfiguration>
+        <rest enableCORS="true" path="/consultarMoeda" produces="application/json">
+            <description>Rest Service, returns cotação da moeda</description>
+            <!-- rest service forma tradicional -->
+            <get consumes="application/json" uri="/{codigoMoeda}">
+                <description>Consultar Cotação de Moeda Oriunda da Casa da Moeda</description>
+                <param dataType="string" description="codigoMoeda"
+                    name="codigoMoeda" required="true" type="path"/>
+                <to uri="direct:consultarCotacaoMoedaDirect"/>
+            </get>
+        </rest>
+        <!-- rota que invoca o cliente remoto e padroniza a resposta seguindo boas práticas REST -->
+        <route id="postConsultarMoedaRoute">
+            <from id="fromConsultarMoedaRoute" uri="direct:postConsultarMoedaRoute"/>
+            <to id="invokeListClientTo" uri="direct:consultarCotacaoMoedaDirect"/>
+            <setHeader headerName="CamelHttpResponseCode" id="response201ListHeader">
+                <constant>201</constant>
+            </setHeader>
+        </route>
+        <!-- Rota que realiza a chamada ao cliente SOAP - POJO JAX-WS -->
+        <route id="invokeConsultarCotacaoMoedaRoute">
+            <!--setBody id="setBody">
+                <simple>${in.headers.in0}</simple>
+            </setBody>  -->
+            <from id="invokeConsultarCotacaoMoeda" uri="direct:consultarCotacaoMoedaDirect"/>
+            <setBody id="setListBody">
+                <groovy>[request.getHeaders().get("in0").toLong()]</groovy>
+            </setBody>
+            <setHeader headerName="operationNamespace" id="setNamespaceHeader">
+                <exchangeProperty/>
+            </setHeader>
+            <setHeader headerName="operationName" id="setOperationHeader">
+                <constant>getUltimoValorVO</constant>
+            </setHeader>
+            <to id="invokeClientTo" uri="cxf:bean:wsConsultarContacaoMoedaClient"/>
+            <to id="outputTo" uri="direct:outputRoute"/>
+        </route>
+        <!-- Rota que devolve o resultado como JSON -->
+        <route id="outputRoute">
+            <!-- <convertBodyTo id="convertToBean" type="com.redhat.cxf.Protocolo" /> -->
+            <from id="outputFrom" uri="direct:outputRoute"/>
+            <setBody id="_setBody1">
+                <!-- o retorno de uma chamada pojo é um objeto org.apache.cxf.message.MessageContentsList, extrair o body. -->
+                <simple>${body[0]}</simple>
+            </setBody>
+            <marshal id="marshallJSON" ref="protocolodtoTogson"/>
+            <removeHeaders id="adjustHeaders" pattern="*"/>
+        </route>
+    </camelContext>
+</beans>

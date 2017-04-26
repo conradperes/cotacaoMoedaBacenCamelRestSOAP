@@ -1,0 +1,12 @@
+camel:
+  springboot:
+    name: consultarMoedaCamelSoapRest
+
+server:
+  port: 8081
+
+# disable all management enpoints except health
+endpoints:
+  enabled: false
+  health:
+    enabled: true

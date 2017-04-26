@@ -1,0 +1,8 @@
+camel:
+  springboot:
+    name: consultarMoedaCamelSoapRest
+
+endpoints:
+  enabled: false
+  health:
+    enabled: true
