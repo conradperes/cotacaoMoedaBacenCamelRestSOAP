@@ -3,7 +3,7 @@ camel:
     name: consultarMoedaCamelSoapRest
 
 server:
-  port: 8081
+  port: 8083
 
 # disable all management enpoints except health
 endpoints:
