@@ -73,7 +73,7 @@
             <setHeader headerName="parameter" id="_setHeader3">
                 <!-- use resultType to indicate that the type should be a java.lang.Boolean -->
                 <simple resultType="java.lang.Long">
-					$(in.header.in0)
+					${headers.in0}
                 </simple>
                 <log message="$(in.body.codigoMoeda)"/>
             </setHeader>
