@@ -46,4 +46,10 @@ public class DataTypeAdapter {
 
 		return DatatypeConverter.printDateTime(c);
 	}
+	
+	public static Long parseLong(String s){
+		if(s!=null)
+			return new Long(s);
+		return null;
+	}
 }
