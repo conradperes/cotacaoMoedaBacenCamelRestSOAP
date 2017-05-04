@@ -76,9 +76,18 @@
                 </simple>
                 <log message="$(in.body.codigoMoeda)"/>
             </setHeader>-->
-            <setHeader headerName="in0">
-                <groovy>[request.getRequest().getParameter("codigoMoeda").toLong()]</groovy>
-            </setHeader>
+            <log message="in0=    ${in.header.in0}"></log>
+            <!--<setHeader headerName="in0">
+                <groovy>${in.header.in0}</groovy>
+            </setHeader>-->
+            <!-- setHeader headerName="in0">
+                <simple resultType="java.lang.Long">
+					${in.header.in0}
+                </simple>
+            </setHeader> -->
+            <setBody id="_setBody2">
+                <header trim="true">${in.header.in0}</header>
+            </setBody>
             <setHeader headerName="operationNamespace" id="_setHeader1">
                 <constant>https://www3.bcb.gov.br/wssgs/services/FachadaWSSGS</constant>
             </setHeader>
@@ -94,10 +103,11 @@
         <route id="outputRoute">
             <from id="outputFrom" uri="direct:outputRoute"/>
             <!-- convertBodyTo id="convertToBean" type="br.gov.bcb.pec.sgs.casosdeuso.ws.comum.WSValorSerieVO"/> -->
+            <log message="############ Corpo do Request= ${body[0]}"/>
             <setBody id="_setBody1">
                 <!-- o retorno de uma chamada pojo é um objeto org.apache.cxf.message.MessageContentsList, 
 					extrair o body. -->
-                <simple resultType="br.gov.bcb.pec.sgs.casosdeuso.ws.comum.WSSerieVO">${body[0]}</simple>
+                <simple>${body[0]}</simple>
             </setBody>
             <marshal id="marshallJSON" ref="moedatoTogson"/>
             <removeHeaders id="adjustHeaders" pattern="*"/>
