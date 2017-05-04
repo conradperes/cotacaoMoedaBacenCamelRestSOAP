@@ -35,7 +35,7 @@
         xmlns="http://camel.apache.org/schema/spring" xmlns:order="http://fabric8.com/examples/order/v7">
         <dataFormats>
             <xmljson id="xmljson"/>
-            <json id="jacksonMoeda" library="Jackson" prettyPrint="true" unmarshalTypeName="br.gov.bcb.pec.sgs.casosdeuso.ws.comum.WSValorSerieVO"/>
+            <json id="jacksonMoeda" library="Jackson" prettyPrint="true" unmarshalTypeName="br.gov.bcb.pec.sgs.casosdeuso.ws.comum.WSSerieVO"/>
         </dataFormats>
         <!-- Configuração da API REST -->
         <restConfiguration apiContextPath="/api-doc" bindingMode="off"
@@ -70,18 +70,20 @@
         <!-- Rota que realiza a chamada ao cliente SOAP - POJO JAX-WS -->
         <route id="invokeConsultarCotacaoMoedaRoute" trace="true">
             <from id="invokeConsultarCotacaoMoeda" uri="direct:consultarCotacaoMoedaDirect"/>
-            <setHeader headerName="parameter" id="_setHeader3">
-                <!-- use resultType to indicate that the type should be a java.lang.Boolean -->
+            <!--  setHeader headerName="parameter" id="_setHeader3">
                 <simple resultType="java.lang.Long">
 					${headers.in0}
                 </simple>
                 <log message="$(in.body.codigoMoeda)"/>
+            </setHeader>-->
+            <setHeader headerName="in0">
+                <groovy>[request.getRequest().getParameter("codigoMoeda").toLong()]</groovy>
             </setHeader>
             <setHeader headerName="operationNamespace" id="_setHeader1">
                 <constant>https://www3.bcb.gov.br/wssgs/services/FachadaWSSGS</constant>
             </setHeader>
             <setHeader headerName="operationName" id="_setHeader2">
-                <constant>getUltimoValorXML</constant>
+                <constant>getUltimoValorVO</constant>
             </setHeader>
             <to id="invokeClientTo" uri="cxf:bean:wsConsultarContacaoMoedaClient"/>
             <to id="outputTo" uri="direct:outputRoute"/>
@@ -90,13 +92,12 @@
         </route>
         <!-- Rota que devolve o resultado como JSON -->
         <route id="outputRoute">
-            <!-- <convertBodyTo id="convertToBean" type="com.redhat.cxf.Protocolo" 
-				/> -->
             <from id="outputFrom" uri="direct:outputRoute"/>
+            <!-- convertBodyTo id="convertToBean" type="br.gov.bcb.pec.sgs.casosdeuso.ws.comum.WSValorSerieVO"/> -->
             <setBody id="_setBody1">
                 <!-- o retorno de uma chamada pojo é um objeto org.apache.cxf.message.MessageContentsList, 
 					extrair o body. -->
-                <simple>${body[0]}</simple>
+                <simple resultType="br.gov.bcb.pec.sgs.casosdeuso.ws.comum.WSSerieVO">${body[0]}</simple>
             </setBody>
             <marshal id="marshallJSON" ref="moedatoTogson"/>
             <removeHeaders id="adjustHeaders" pattern="*"/>
